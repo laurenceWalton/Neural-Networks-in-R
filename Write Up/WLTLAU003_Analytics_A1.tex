@@ -1,5 +1,6 @@
 \documentclass[12pt]{article}
 \usepackage{amsmath}
+\usepackage{subcaption}
 \usepackage[utf8]{inputenc}
 \usepackage{wrapfig}
 \usepackage{float}
@@ -8,7 +9,7 @@
 \usepackage[breaklinks]{hyperref}
 \hypersetup{colorlinks=true, linkcolor=Black, citecolor=Black, filecolor=Blue,
     urlcolor=Blue, unicode=true}
-
+\usepackage[margin=1.2in]{geometry} % Adjust border
 
 \renewcommand{\thesubsubsection}{(\alph{subsubsection})}
 
@@ -43,24 +44,44 @@ A potential numerical pitfall in evaluating the cross-entropy error function ari
 
 \subsubsection{}
 
-Plotting the cross-entropy error obtained on the validation data for varying values of $\nu$ yields:
+Plotting the cross-entropy error obtained on the validation data for varying values of $\nu$ yields the following curve, where I found the $\nu$ value of $0.09261443$ corresponds to the minimum error of $0.1259723$:
 
 \begin{figure*}[!ht]
-\center
-\includegraphics[width=\textwidth,height=0.5\textheight]{question_c_plot.png}
+\centering
+\includegraphics[width=0.8\textwidth]{question_c_plot.png}
 \end{figure*}
 
-Where we find the $\nu$ value of 0.2270106 corresponds to the minimum error (0.1104243).
-
+\newpage
 \subsubsection{}
-If we add the results from the neural network with the reLU activation function we obtain:
+Now I include use a new ANN which uses Rectified Linear Units (ReLU) as the hidden layer activation function. This is superimposed over the previous curve which showed an ANN using Tanh activation functions. I found the $\nu$ value of $0.09261443$ corresponds to the minimum error of $0.1207693$:
 
 \begin{figure*}[!ht]
-\center
-\includegraphics[width=\textwidth,height=0.5\textheight]{question_d_plot.png}
+\centering
+\includegraphics[width=0.8\textwidth]{question_d_plot.png}
 \end{figure*}
 
+\newpage
+
 \subsubsection{}
+Here I trained a neural network with tanh activation in the hidden layer on the complete data set, both with and without L1 regularization. Comparing the magnitude of the parameters between these two models provides insights into the model's complexity. L1 regularization introduces more 'sparsity', essentially reducing the effective number of parameters. In this case specifically, with L1 regularization, many of the model's parameters shrank to near-zero or zero and the largest parameter magnitudes were also reduced. The fact that the regularization promotes such strong sparsity indicates that the original model, without regularization, might have been overfitting the data, capturing excessive variance instead of the true underlying patterns. In simpler terms, the original model had high variance, which might have compromised its generalization capability on unseen data. The reduced number of effective parameters and reduced magnitudes show that the model can better perform on data outside of the training set.
+
+ 
+\begin{figure*}[!ht]
+\centering
+\includegraphics[width=0.5\textwidth]{question_e_plot_B.png}
+\includegraphics[width=0.5\textwidth]{question_e_plot_A.png}
+\end{figure*}
+
+
+
 \subsubsection{}
+\begin{figure*}[!ht]
+\centering
+\includegraphics[width=0.7\textwidth]{question_f_plot_A.png}
+\includegraphics[width=0.7\textwidth]{question_f_plot_B.png}
+\end{figure*}
+
+
+
 
 \end{document}
