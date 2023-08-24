@@ -1,6 +1,7 @@
-rm(list = ls())
-
+#
 # (a)
+#
+
 
 # Function: softmax_matrix
 # Description: Apply softmax to a matrix (N training examples)
@@ -9,7 +10,7 @@ rm(list = ls())
 #   z_matrix: A q (no. nodes) X N (no. training examples) matrix
 #
 # Returns:
-#   Matrix of same dimensions as z_matrix with softmax applied to each column
+#   Matrix of same dim as z_matrix with softmax applied to each column
 softmax_matrix <- function(z_matrix){
   
   softmax_vector = function(z){
@@ -26,14 +27,15 @@ softmax_matrix <- function(z_matrix){
 
 
 # Function: log_softmax_matrix
-# Description: Apply log of the softmax to a matrix (N training examples),
+# Description: Apply log of softmax to a matrix (N training examples),
 # avoiding over/under flow of values from normal softmax
 #
 # Arguments:
 #   z_matrix: A p (no. features) X N (no. training examples) matrix
 #
 # Returns:
-#   Matrix of same dimensions as z_matrix with log softmax applied to each column
+#   Matrix of same dimensions as z_matrix with log softmax applied 
+#   to each column
 log_softmax_matrix = function(z_matrix){
   
   log_softmax_vector = function(z){
@@ -57,8 +59,9 @@ log_softmax_matrix = function(z_matrix){
 # Function: tanh
 # Description: Hyperbolic tangent function
 tanh = function(z){
-  # Do NOT use the bare calculation commented out - you may spend very long thinking 
-  # the softmax is causing over/under flow while it was tanh all along
+  # Do NOT use the bare calculation commented out - you may spend very
+  # long thinking the softmax is causing over/under flow while it was 
+  # tanh all along
   #(exp(z) - exp(-z))/(exp(z) + exp(-z))
   base::tanh(z)
 }
@@ -105,21 +108,24 @@ neural_net = function(X, Y, theta, nu)
   # qxN (3x148)        
   z2    = t(W2)%*%a1 + b2
   
-  # Use log_softmax_matrix instead of softmax_matrix
-  a2    = softmax_matrix(z2)
+  # softmax_matrix for when returning a2
+  a2     = softmax_matrix(z2)
+  # log_softmax_matrix for cross entropy calculation
   log_a2 = log_softmax_matrix(z2)
   
-  # Cross-entropy error function for multi-class problems (q-dimensional response)
+  # Cross-entropy error function for multi-class problems (q-dim) 
   cross_entropy <- -sum(t(Y) * log_a2)/N
+  
   # Debugging
   #if (is.na(cross_entropy)){
   # browser()
   #}
+  
   # Cross-entropy error with L1 penalty applied
   L1 <- cross_entropy + (nu/N * (sum(abs(W1)) + sum(abs(W2))))
                             
   # Return predictions and error:
-  return(list(out=a2, z2=z2, cross_entropy=cross_entropy, L1=L1))
+  return(list(out=a2, cross_entropy=cross_entropy, L1=L1))
 }
 
 
@@ -165,17 +171,19 @@ for (i in 1:seq){
   theta   = runif(npars,-1,1)
   res_opt = nlm(obj, theta, iterlim=1000)
   
-  res_val = neural_net(X_validation, Y_validation, res_opt$estimate, 0) 
+  res_val = neural_net(X_validation, Y_validation, 
+                       res_opt$estimate, 0) 
   
   val_error[i] = res_val$cross_entropy
   print(paste0('Val_Run_',i))
 }
 
 
-plot(val_error ~ lams, type = 'b', pch=16, lty=2, xlab = "nu (ν)", 
-     ylab = "Validation Error", col = 6, lwd = 1, ylim=c(0,max(val_error)), 
-     main="Validation vs nu (L1-regularisation)")
-# Vertical line at the value of lams that corresponds to the minimum val_error
+plot(val_error ~ lams, main = "Error vs nu (L1-regularisation)", 
+     type = 'b', pch=16, lty=2, col = 6, lwd = 1, xlab = "nu (ν)", 
+     ylab = "Validation Error", ylim=c(0,max(val_error)))
+
+# Vertical line at the value of nu that has minimum val_error
 abline(v=lams[which.min(val_error)], col=4, lty=2)
 # Horizontal line at minimum val_error
 abline(h=min(val_error), col=4, lty=2)
@@ -184,24 +192,29 @@ min(val_error)
 # Corresponding nu
 lams[which.min(val_error)]
 
+
 #
 # (d)
 #
 
 
 # Function: ReLU
-# Description: Apply ReLU to a vector (single training example). Uses pmax(z,0) to apply the max-function element-wise
+# Description: Apply ReLU to a vector (single training example). 
+# Uses pmax(z,0) to apply the max-function element-wise
 ReLU = function(z){
   pmax(z,0)
 }
 
+# Function: leaky_ReLU. 
+# The parameter 'alpha' determines the slope for negative values, 
+# allowing a small gradient when z is less than zero.
 leaky_ReLU = function(z, alpha = 0.01){
   pmax(z, alpha * z)
 }
 
 # Function: neural_net_ReLU
-# Description: Identical implementaion as question (b) but with ReLU activation
-# for hidden layer
+# Description: Identical implementaion as question (b) but with 
+# leaky ReLU activation for hidden layer
 neural_net_ReLU = function(X, Y, theta, nu)
 {
   # Relevant dimensional variables:
@@ -241,7 +254,7 @@ neural_net_ReLU = function(X, Y, theta, nu)
   a2    = softmax_matrix(z2)
   log_a2 = log_softmax_matrix(z2)
   
-  # Cross-entropy error function for multi-class problems (q-dimensional response)
+  # Cross-entropy error function for multi-class problems (q-dim)
   cross_entropy <- -sum(t(Y) * log_a2)/N
   
   # Debugging
@@ -252,10 +265,11 @@ neural_net_ReLU = function(X, Y, theta, nu)
   L1 <- cross_entropy + nu/N * (sum(abs(W1)) + sum(abs(W2)))
   
   # Return predictions and error:
-  return(list(out=a2, lsm=log_a2, z2=z2, cross_entropy=cross_entropy, L1=L1))
+  return(list(out=a2, cross_entropy=cross_entropy, L1=L1))
 }
 
-# Return the error with L1 penalty applied when fitting - in this case use modified NN
+# Return the error with L1 penalty applied when fitting,
+# in this case use reLU NN
 obj_ReLU <- function(pars) {
   res <- neural_net_ReLU(X_train, Y_train, pars, nu)
   return(res$L1)
@@ -277,7 +291,8 @@ for (i in 1:seq){
   theta   = runif(npars,-1,1)
   res_opt = nlm(obj_ReLU, theta, iterlim=1000)
   
-  res_val_ReLU = neural_net_ReLU(X_validation, Y_validation, res_opt$estimate, 0) 
+  res_val_ReLU = neural_net_ReLU(X_validation, 
+                                 Y_validation, res_opt$estimate, 0) 
   
   val_error_ReLU[i] = res_val_ReLU$cross_entropy
   print(paste0('Val_Run_',i))
@@ -286,9 +301,9 @@ for (i in 1:seq){
 # First plot the tanh (pink) line again 
 # NOTE: must run loop in prev.question first to obtain val_error 
 # Ensure all params the same (ie. iterlim, seq)
-plot(val_error ~ lams, type = 'b', pch=19, lty=2, xlab = "nu (ν)", 
-     ylab = "Validation Error", col = 6, lwd = 1, ylim=c(0,max(val_error)), 
-     main="Validation Error vs Nu (L1-regularisation)")
+plot(val_error ~ lams, main = "Error vs nu (L1-regularisation)", 
+     type = 'b', pch=16, lty=2, col = 6, lwd = 1, xlab = "nu (ν)", 
+     ylab = "Validation Error", ylim=c(0,max(val_error)))
 
 # Then superimpose the ReLU (black) line
 lines(val_error_ReLU ~ lams, type = 'b', pch=16, lty=2, col=9, lwd=1)
@@ -296,7 +311,7 @@ lines(val_error_ReLU ~ lams, type = 'b', pch=16, lty=2, col=9, lwd=1)
 # Legend, with Tanh first and then ReLU
 legend("topright", col=c(6, 9), legend=c("Tanh", "ReLU"), pch=19)
 
-# Vertical line at the value of lams that corresponds to the minimum val_error
+# Vertical line at the value of nu that has minimum val_error
 abline(v=lams[which.min(val_error_ReLU)], col=4, lty=2)
 
 # Horizontal line at minimum val_error
@@ -305,6 +320,7 @@ abline(h=min(val_error_ReLU), col=4, lty=2)
 min(val_error_ReLU)
 # Corresponding nu
 lams[which.min(val_error_ReLU)]
+
 
 #
 # (e)
@@ -335,7 +351,9 @@ res_opt = nlm(obj_full_dataset, theta, iterlim=1000)
 optimal_pars <- res_opt$estimate
 
 # Plot the magnitudes of the parameters with L1
-plot(abs(optimal_pars), type = 'h', xlab = 'Parameter Index', ylab = 'Magnitude', main = 'Magnitudes of Model Parameters with L1 Regularization')
+plot(abs(optimal_pars), type = 'h', xlab = 'Parameter Index', 
+     ylab = 'Magnitude', 
+     main = 'Magnitudes of Model Parameters with L1 Regularization')
 
 nu = 0
 theta   = runif(npars,-1,1)
@@ -343,7 +361,9 @@ res_opt = nlm(obj_full_dataset, theta, iterlim=1000)
 optimal_pars_no_reg <- res_opt$estimate
 
 # Plot the magnitudes of the parameters without L1
-plot(abs(optimal_pars_no_reg), type = 'h', xlab = 'Parameter Index', ylab = 'Magnitude', main = 'Magnitudes of Model Parameters without L1 Regularization')
+plot(abs(optimal_pars_no_reg), type = 'h', xlab = 'Parameter Index', 
+     ylab = 'Magnitude', 
+     main = 'Magnitudes of Model Parameters without L1 Regularization')
 
 
 #
@@ -357,7 +377,7 @@ p = 2
 q = 3
 m = 8
 npars = p*m+m*q+m+q
-nu = 0.09261443
+nu    = 0.09261443
 set.seed(2023)
 theta   = runif(npars,-1,1)
 res_opt = nlm(obj_full_dataset, theta, iterlim=1000)
@@ -365,20 +385,29 @@ optimal_pars <- res_opt$estimate
 
 # Construct the plot for response curve
 m = 300
-wing_dummy       = seq(min(X[, "Wing"]), max(X[, "Wing"]), length=m)
-weight_dummy     = seq(min(X[, "Weight"]), max(X[, "Weight"]), length=m)
-plot (1, 1, type = 'n', xlim = range(X[, "Wing"]), ylim = range(X[, "Weight"]),
+wing_dummy       = seq(min(X[, "Wing"]), 
+                       max(X[, "Wing"]), 
+                       length=m)
+weight_dummy     = seq(min(X[, "Weight"]), 
+                       max(X[, "Weight"]), 
+                       length=m)
+
+plot (1, 1, type = 'n', xlim = range(X[, "Wing"]), 
+      ylim = range(X[, "Weight"]),
       xlab="Wing", ylab="Weight")
+
 abline(v=wing_dummy)
 abline(h=weight_dummy)
 x1 = rep(wing_dummy, m)
 x2 = rep(weight_dummy, each=m)
 points(x2~x1, pch=16)
 
-# Use points on response curve to create a matrix to be used for getting predictions
+# Use points on response curve to create a matrix 
+# to be used for getting predictions
 X_lattice = data.frame(Wing=x1, Weight=x2)
-# The Y values are just zeros - not actually used when making these predicitons
-# as no error is being calculated, just getting the outputs from the NN
+# The Y values are just zeros - not actually used when making these 
+# predicitons as no error is being calculated, just getting the 
+# outputs from the NN
 m_zeros = rep(0,length=m)
 y1 = rep(m_zeros, m)
 y2 = rep(m_zeros, m)
@@ -389,13 +418,14 @@ Y_lattice = data.frame(SpecA=y1, SpecB=y2, SpecC=y3)
 res = neural_net(X_lattice, Y_lattice, optimal_pars, 0)
 predictions = t(res$out)
 
-# Obtain the class from each prediction by taking the highest probability from
-# softmax output
+# Obtain the class from each prediction by taking the highest 
+# probability from softmax output
 class = apply(predictions, 1, which.max)
 cols = c('blue', 'red', 'lightblue')
-plot(x2~x1, pch=16, col=cols[class], xlab="Weight", ylab="Wing", main="Response Curve with Tanh activations")
+plot(x2~x1, pch=16, col=cols[class], xlab="Weight", ylab="Wing", 
+     main="Response Curve with Tanh activations")
 
-# Plot the training data with a letter corresponding to the class (Y one-hot encoded)
+# Plot the training data with a letter corresponding to the class 
 numeric_to_char <- function(x) {
   return(LETTERS[x])
 }
@@ -428,20 +458,29 @@ optimal_pars <- res_opt$estimate
 
 # Construct the plot for response curve
 m = 300
-wing_dummy       = seq(min(X[, "Wing"]), max(X[, "Wing"]), length=m)
-weight_dummy     = seq(min(X[, "Weight"]), max(X[, "Weight"]), length=m)
-plot (1, 1, type = 'n', xlim = range(X[, "Wing"]), ylim = range(X[, "Weight"]),
+wing_dummy       = seq(min(X[, "Wing"]), 
+                       max(X[, "Wing"]), 
+                       length=m)
+weight_dummy     = seq(min(X[, "Weight"]), 
+                       max(X[, "Weight"]), 
+                       length=m)
+
+plot (1, 1, type = 'n', xlim = range(X[, "Wing"]), 
+      ylim = range(X[, "Weight"]),
       xlab="Wing", ylab="Weight")
+
 abline(v=wing_dummy)
 abline(h=weight_dummy)
 x1 = rep(wing_dummy, m)
 x2 = rep(weight_dummy, each=m)
 points(x2~x1, pch=16)
 
-# Use points on response curve to create a matrix to be used for getting predictions
+# Use points on response curve to create a matrix 
+# to be used for getting predictions
 X_lattice = data.frame(Wing=x1, Weight=x2)
-# The Y values are just zeros - not actually used when making these predicitons
-# as no error is being calculated, just getting the outputs from the NN
+# The Y values are just zeros - not actually used when making these 
+# predicitons as no error is being calculated, just getting the 
+# outputs from the NN
 m_zeros = rep(0,length=m)
 y1 = rep(m_zeros, m)
 y2 = rep(m_zeros, m)
@@ -449,23 +488,23 @@ y3 = rep(m_zeros, m)
 Y_lattice = data.frame(SpecA=y1, SpecB=y2, SpecC=y3)
 
 # Get predictions
-res = neural_net(X_lattice, Y_lattice, optimal_pars, 0)
+res = neural_net_ReLU(X_lattice, Y_lattice, optimal_pars, 0)
 predictions = t(res$out)
 
-# Obtain the class from each prediction by taking the highest probability from
-# softmax output
+# Obtain the class from each prediction by taking the highest 
+# probability from softmax output
 class = apply(predictions, 1, which.max)
 cols = c('blue', 'red', 'lightblue')
-plot(x2~x1, pch=16, col=cols[class], xlab="Weight", ylab="Wing", main="Response Curve with ReLU activations")
+plot(x2~x1, pch=16, col=cols[class], xlab="Weight", 
+     ylab="Wing", main="Response Curve with ReLU activations")
 
-# Plot the training data with a letter corresponding to the class (Y one-hot encoded)
+# Plot the training data with a letter corresponding to the class 
 numeric_to_char <- function(x) {
   return(LETTERS[x])
 }
 labels = apply(Y, 1, which.max)
 char_labels = sapply(labels, numeric_to_char)
 text(X[, "Weight"]~ X[, "Wing"], labels=char_labels, cex=0.8)
-
 
 
 
