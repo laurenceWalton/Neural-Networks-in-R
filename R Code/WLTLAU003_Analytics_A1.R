@@ -2,54 +2,39 @@
 # (a)
 #
 
-
-# Function: softmax_matrix
-# Description: Apply softmax to a matrix (N training examples)
-#
-# Arguments:
-#   z_matrix: A q (no. nodes) X N (no. training examples) matrix
-#
-# Returns:
-#   Matrix of same dim as z_matrix with softmax applied to each column
-softmax_matrix <- function(z_matrix){
-  
-  softmax_vector = function(z){
-    exp(z)/sum(exp(z))
-  }
-  
-  res = matrix(0, nrow = dim(z_matrix)[1], ncol = dim(z_matrix)[2])
-  for (j in 1:dim(z_matrix)[2]){  
-    vec      = z_matrix[, j]        
-    res[, j] = softmax_vector(vec)
-  }
-  return(res)
-}
-
-
-# Function: log_softmax_matrix
+# Function: softmax_and_log_softmax 
 # Description: Apply log of softmax to a matrix (N training examples),
 # avoiding over/under flow of values from normal softmax
 #
 # Arguments:
-#   z_matrix: A p (no. features) X N (no. training examples) matrix
+#   X: A N (no. training examples) x p (no. features) matrix
 #
 # Returns:
-#   Matrix of same dimensions as z_matrix with log softmax applied 
-#   to each column
-log_softmax_matrix = function(z_matrix){
+#   Matrix of same dimensions as X with log softmax applied 
+#   and the a matrix with log softmax applied - done like this
+#   to avoid numerical issues encountered when just taking log
+#   of softmax output
+softmax_and_log_softmax <- function(X) {
+  # Subtracting the max for numerical stability
+  max_prob <- apply(X, 1, max)
+  X_stable <- sweep(X, 1, max_prob, "-")
   
-  log_softmax_vector = function(z){
-    # Subtract the maximum value
-    x = z - max(z)
-    # Equation rearranging 
-    log_softmax_z = x - log(sum(exp(x)))
-    return(log_softmax_z)
-  }
+  # Exponentiating
+  exp_X <- exp(X_stable)
   
-  # Apply the log_softmax_vector function to each column of z_matrix
-  result_matrix = apply(z_matrix, 2, log_softmax_vector)
+  # Calculating the sum of exponentials for each row
+  sum_exp <- apply(exp_X, 1, sum)
   
-  return(result_matrix)
+  # Calculating softmax
+  softmax_X <- sweep(exp_X, 1, sum_exp, "/")
+  
+  # Calculating log sum of exponentials
+  log_sum_exp <- log(sum_exp)
+  
+  # Calculating log softmax
+  log_softmax_X <- sweep(X_stable, 1, log_sum_exp, "-")
+  
+  return(list(softmax = softmax_X, log_softmax = log_softmax_X))
 }
 
 
@@ -59,15 +44,10 @@ log_softmax_matrix = function(z_matrix){
 # Function: tanh
 # Description: Hyperbolic tangent function
 tanh = function(z){
-  # Do NOT use the bare calculation commented out - you may spend very
-  # long thinking the softmax is causing over/under flow while it was 
-  # tanh all along
-  #(exp(z) - exp(-z))/(exp(z) + exp(-z))
   base::tanh(z)
 }
 
 # Function: neural_net
-#
 # Arguments:
 #   X: Input matrix (N x p)
 #   Y: Output matrix (N x q)
@@ -101,29 +81,30 @@ neural_net = function(X, Y, theta, nu)
   
   # pxN (2x148)
   a0    = matrix(t(X), p, N)
-
+  
   # mxN (8x148)   
   a1    = apply(t(W1)%*%a0 +  b1, c(1,2), tanh)
-
+  
   # qxN (3x148)        
   z2    = t(W2)%*%a1 + b2
   
-  # softmax_matrix for when returning a2
-  a2     = softmax_matrix(z2)
-  # log_softmax_matrix for cross entropy calculation
-  log_a2 = log_softmax_matrix(z2)
+  # Transpose z2 so (148x3)
+  z2    = t(z2)
+  
+  sm    = softmax_and_log_softmax(z2)
+  a2    = sm$softmax
   
   # Cross-entropy error function for multi-class problems (q-dim) 
-  cross_entropy <- -sum(t(Y) * log_a2)/N
+  cross_entropy <- -sum(Y * sm$log_softmax)/N
   
   # Debugging
-  #if (is.na(cross_entropy)){
-  # browser()
-  #}
+  if (is.na(cross_entropy)){
+    browser()
+  }
   
   # Cross-entropy error with L1 penalty applied
   L1 <- cross_entropy + (nu/N * (sum(abs(W1)) + sum(abs(W2))))
-                            
+  
   # Return predictions and error:
   return(list(out=a2, cross_entropy=cross_entropy, L1=L1))
 }
@@ -149,12 +130,6 @@ Y_train       = matrix(Y[set,], ncol = 3)
 X_validation  = matrix(X[-set,], ncol=2)
 Y_validation  = matrix(Y[-set,], ncol = 3)
 
-# Return the error with L1 penalty applied when fitting
-obj <- function(pars) {
-  res <- neural_net(X_train, Y_train, pars, nu)
-  return(res$L1)
-}
-
 # Network parameters
 p = 2
 q = 3
@@ -162,22 +137,32 @@ m = 8
 npars = p*m+m*q+m+q
 
 seq       = 30
-val_error = rep(NA, seq)
-lams      = exp(seq(-11, -1, length=seq))
+lams      <- exp(seq(-11, -1, length=seq))
 
-for (i in 1:seq){
-  nu      = lams[i]
+# Do the validation analysis in parallel - same idea as using a for 
+# loop with the different nu's but in this case they are done 
+# in parallel
+library(parallel)
+validation_error_function <- function(i) {
+  nu = lams[i]
+  # Return the error with L1 penalty applied when fitting
+  obj <- function(pars) {
+    res <- neural_net(X_train, Y_train, pars, nu)
+    return(res$L1)
+  }
   set.seed(2023)
-  theta   = runif(npars,-1,1)
+  theta = runif(npars,-1,1)
   res_opt = nlm(obj, theta, iterlim=1000)
   
   res_val = neural_net(X_validation, Y_validation, 
                        res_opt$estimate, 0) 
-  
-  val_error[i] = res_val$cross_entropy
-  print(paste0('Val_Run_',i))
+  return(res_val$cross_entropy)
 }
+# Number of cores to use (adjust as needed)
+num_cores <- detectCores() - 1
 
+# Perform the parallel computation
+val_error <- unlist(mclapply(1:seq, validation_error_function, mc.cores = num_cores))
 
 plot(val_error ~ lams, main = "Error vs nu (L1-regularisation)", 
      type = 'b', pch=16, lty=2, col = 6, lwd = 1, xlab = "nu (ν)", 
@@ -205,16 +190,9 @@ ReLU = function(z){
   pmax(z,0)
 }
 
-# Function: leaky_ReLU. 
-# The parameter 'alpha' determines the slope for negative values, 
-# allowing a small gradient when z is less than zero.
-leaky_ReLU = function(z, alpha = 0.01){
-  pmax(z, alpha * z)
-}
-
 # Function: neural_net_ReLU
 # Description: Identical implementaion as question (b) but with 
-# leaky ReLU activation for hidden layer
+# ReLU activation for hidden layer
 neural_net_ReLU = function(X, Y, theta, nu)
 {
   # Relevant dimensional variables:
@@ -245,34 +223,30 @@ neural_net_ReLU = function(X, Y, theta, nu)
   a0    = matrix(t(X), p, N)
   
   # mxN (8x148)   
-  a1    = apply(t(W1)%*%a0 +  b1, c(1,2), leaky_ReLU)
+  a1    = apply(t(W1)%*%a0 +  b1, c(1,2), ReLU)
   
   # qxN (3x148)        
   z2    = t(W2)%*%a1 + b2
   
-  # Use log_softmax_matrix instead of softmax_matrix
-  a2    = softmax_matrix(z2)
-  log_a2 = log_softmax_matrix(z2)
+  # Transpose z2 so (148x3)
+  z2    = t(z2)
   
-  # Cross-entropy error function for multi-class problems (q-dim)
-  cross_entropy <- -sum(t(Y) * log_a2)/N
+  sm    = softmax_and_log_softmax(z2)
+  a2    = sm$softmax
+  
+  # Cross-entropy error function for multi-class problems (q-dim) 
+  cross_entropy <- -sum(Y * sm$log_softmax)/N
   
   # Debugging
   if (is.na(cross_entropy)){
     browser()
   }
+  
   # Cross-entropy error with L1 penalty applied
-  L1 <- cross_entropy + nu/N * (sum(abs(W1)) + sum(abs(W2)))
+  L1 <- cross_entropy + (nu/N * (sum(abs(W1)) + sum(abs(W2))))
   
   # Return predictions and error:
   return(list(out=a2, cross_entropy=cross_entropy, L1=L1))
-}
-
-# Return the error with L1 penalty applied when fitting,
-# in this case use reLU NN
-obj_ReLU <- function(pars) {
-  res <- neural_net_ReLU(X_train, Y_train, pars, nu)
-  return(res$L1)
 }
 
 # Network parameters
@@ -282,21 +256,32 @@ m = 8
 npars = p*m+m*q+m+q
 
 seq       = 30
-val_error_ReLU = rep(NA, seq)
 lams      = exp(seq(-11, -1, length.out=seq))
 
-for (i in 1:seq){
-  nu      = lams[i]
+# Do the validation analysis in parallel - same idea as using a for 
+# loop with the different nu's but in this case they are done 
+# in parallel
+library(parallel)
+validation_error_function_ReLU <- function(i) {
+  nu = lams[i]
+  # Return the error with L1 penalty applied when fitting
+  obj_ReLU <- function(pars) {
+    res <- neural_net_ReLU(X_train, Y_train, pars, nu)
+    return(res$L1)
+  }
   set.seed(2023)
-  theta   = runif(npars,-1,1)
+  theta = runif(npars,-1,1)
   res_opt = nlm(obj_ReLU, theta, iterlim=1000)
   
-  res_val_ReLU = neural_net_ReLU(X_validation, 
-                                 Y_validation, res_opt$estimate, 0) 
-  
-  val_error_ReLU[i] = res_val_ReLU$cross_entropy
-  print(paste0('Val_Run_',i))
+  res_val_ReLU = neural_net_ReLU(X_validation, Y_validation, 
+                                 res_opt$estimate, 0) 
+  return(res_val_ReLU$cross_entropy)
 }
+# Number of cores to use (adjust as needed)
+num_cores <- detectCores() - 1
+
+# Perform the parallel computation
+val_error_ReLU <- unlist(mclapply(1:seq, validation_error_function_ReLU, mc.cores = num_cores))
 
 # First plot the tanh (pink) line again 
 # NOTE: must run loop in prev.question first to obtain val_error 
@@ -416,7 +401,7 @@ Y_lattice = data.frame(SpecA=y1, SpecB=y2, SpecC=y3)
 
 # Get predictions
 res = neural_net(X_lattice, Y_lattice, optimal_pars, 0)
-predictions = t(res$out)
+predictions = res$out
 
 # Obtain the class from each prediction by taking the highest 
 # probability from softmax output
@@ -489,7 +474,7 @@ Y_lattice = data.frame(SpecA=y1, SpecB=y2, SpecC=y3)
 
 # Get predictions
 res = neural_net_ReLU(X_lattice, Y_lattice, optimal_pars, 0)
-predictions = t(res$out)
+predictions = res$out
 
 # Obtain the class from each prediction by taking the highest 
 # probability from softmax output
@@ -505,6 +490,3 @@ numeric_to_char <- function(x) {
 labels = apply(Y, 1, which.max)
 char_labels = sapply(labels, numeric_to_char)
 text(X[, "Weight"]~ X[, "Wing"], labels=char_labels, cex=0.8)
-
-
-
