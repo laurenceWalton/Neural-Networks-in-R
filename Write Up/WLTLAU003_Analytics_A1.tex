@@ -31,7 +31,6 @@
 
 \begin{document}
 
-
 \title{STA4026S Analytics - Neural Networks}
 
 \author{Assignment 1\\
@@ -66,53 +65,56 @@ The soft-max of \( X \) (row-wise for each training example) is:
 \subsubsection{}
 A potential numerical pitfall in evaluating the cross-entropy error function arises if the predicted probability for a class is 0, as the evaluation would include the logarithm of 0 which is obviously undefined. This is mitigated by using activation functions such as the soft-max, where no predictions can be zero due to exponentiation. However, due to floating point imprecision in software, predictions could be rounded to zero in the soft-max, and therefore cause undefined behaviour in the cross-entropy error function. In the implementation of the soft-max in this assignment, this was avoided by performing the "Log-Sum-Exp" trick, which works by subtracting the maximum value before exponentiation and adding it back after taking the logarithm. This prevents issues related to floating point rounding without altering the actual result.
 
-\begin{figure*}[h]
-\centering
-\includegraphics[width=0.8\textwidth]{question_c_plot.png}
-\caption{Tanh activations}
-\label{fig:fig1}
-\end{figure*}
-
-\newpage
 % C
 \subsubsection{}
 Figure~\ref{fig:fig1} shows the cross entropy error obtained on the validation data for varying values of \( \nu \), where I found the \( \nu \) value of \( 0.09261443 \) corresponds to the minimum error of \( 0.1259723 \). Up until the minimum the validation error decreases as the regularisation increases, which is the expected result: we first want our neural network to over-fit the data, and then through regularisation decrease the over-fitting by penalising the complexity of the model. The decreasing validation error shows that as the regularisation increases the model is able to better generalise on unseen data, up until a point where further penalising model complexity just results in worse performance. The regularisation level (value of \( \nu \)) was chosen to be 0.1 for the remainder of the assignment. 
 
 
-\begin{figure*}[h]
-\centering
-\includegraphics[width=0.8\textwidth]{question_d_plot.png}
-\caption{Tanh and ReLU activations}
-\label{fig:fig2}
-\end{figure*}
-
 % D
 \subsubsection{}
-Figure~\ref{fig:fig2} shows the previous validation curve but with a new curve also superimposed: that of the same neural network implementation except for the fact that the Rectified Linear Units (ReLU) activation function is used on the hidden layers. For this new validation curve, I found the $\nu$ value of $0.09261443$ corresponds to the minimum error of $0.120692$. This is almost identical to that of the tanh curve, the only difference being the ReLU achieving a slightly lower validation error at the minimum. From the validation plot of these two curves alone, I cannot distinguish a benefit from using either over the other except for this difference, and so would decide to use ReLU over tanh.
+Figure~\ref{fig:fig1} shows the previous validation curve but with a new curve also superimposed: that of the same neural network implementation except for the fact that the Rectified Linear Units (ReLU) activation function is used on the hidden layers. For this new validation curve, I found the $\nu$ value of $0.09261443$ corresponds to the minimum error of $0.120692$. This is almost identical to that of the tanh curve, the only difference being the ReLU achieving a slightly lower validation error at the minimum. From the validation plot of these two curves alone, I cannot distinguish a benefit from using either over the other except for this difference, and so would decide to use ReLU over tanh.
 
-\begin{figure*}[h]
-\centering
-\includegraphics[width=0.6\textwidth]{question_e_plot_B.png}
-\includegraphics[width=0.6\textwidth]{question_e_plot_A.png}
-\caption{Magnitude of model parameters}
-\label{fig:fig3}
-\end{figure*}
-
+\newpage
 % E
 \subsubsection{}
- Figure~\ref{fig:fig3} shows the magnitudes of the ReLU neural network trained on the entire data set, with and without L1 regularization applied. When applied, the regularisation level was set to \( \nu = 0.1 \). Comparing the magnitude of the parameters between these two plots provides insights into the model's complexity. L1 regularization introduces more 'sparsity', essentially reducing the effective number of parameters. In this case specifically, with L1 regularization, many of the model's parameters shrank to near-zero or zero and the largest parameter magnitudes were also reduced. The fact that the regularization promotes such strong sparsity indicates that the original model, without regularization, might have been over fitting the data, capturing too much variance instead of the true underlying patterns. The reduced number of effective parameters show that the model has been able to better capture the underlying pattern and therefore will be able to perform better in its goal of predicting the class of unseen data. This is illustrated in Figure~\ref{fig:fig2} by the decreasing validation error.
+ Figure~\ref{fig:fig2} shows the magnitudes of the ReLU neural network trained on the entire data set, with and without L1 regularization applied. When applied, the regularisation level was set to \( \nu = 0.1 \). Comparing the magnitude of the parameters between these two plots provides insights into the model's complexity. L1 regularization introduces more 'sparsity', essentially reducing the effective number of parameters. In this case specifically, with L1 regularization, many of the model's parameters shrank to near-zero or zero and the largest parameter magnitudes were also reduced. The fact that the regularization promotes such strong sparsity indicates that the original model, without regularization, might have been over fitting the data, capturing too much variance instead of the true underlying patterns. The reduced number of effective parameters show that the model has been able to better capture the underlying pattern and therefore will be able to perform better in its goal of predicting the class of unseen data. This is illustrated in Figure~\ref{fig:fig1} by the decreasing validation error.
 
 % F
 \subsubsection{}
-From the response curves in Figure~\ref{fig:fig4} it shows that using ReLU activations cause the model to partition the data linearly instead of non-linearly (as seen when using tanh activations). This is to be expected as ReLU is a piece wise linear function that simply outputs the input if it is positive, and zero otherwise. I would argue that in this context the more appropriate choice of activation is the ReLU, as it provides a much simpler and more interpretable rule for making predictions on new bird measurements. We can observe this in the response curve for the ReLU activations: the data is easily separable by two straight lines, forming the three classes in the feature space. This is as opposed to the tanh activations, which has non-linearilty in how it divides the feature space.
+From the response curves in Figure~\ref{fig:fig3} it shows that using ReLU activations cause the model to partition the data linearly instead of non-linearly (as seen when using tanh activations). This is to be expected as ReLU is a piece wise linear function that simply outputs the input if it is positive, and zero otherwise. I would argue that in this context the more appropriate choice of activation is the ReLU, as it provides a much simpler and more interpretable rule for making predictions on new bird measurements. We can observe this in the response curve for the ReLU activations: the data is easily separable by two straight lines, forming the three classes in the feature space. This is as opposed to the tanh activations, which has non-linearilty in how it divides the feature space.
 
+\newpage 
 
-\newpage
-\appendix
-\section{Code}
-Raw R code from WLTLAU003\_Analytics\_A1.R:
+\begin{figure*}[p]
+\centering
+\includegraphics[width=0.7\textwidth]{question_c_plot.png}
+\includegraphics[width=0.7\textwidth]{question_d_plot.png}
+\caption{Validation curves}
+\label{fig:fig1}
+\end{figure*}
+
+\begin{figure*}[p]
+\centering
+\includegraphics[width=0.7\textwidth]{question_e_plot_A.png}
+\includegraphics[width=0.7\textwidth]{question_e_plot_B.png}
+\caption{Magnitude of model parameters}
+\label{fig:fig2}
+\end{figure*}
+
+\begin{figure*}[p]
+\centering
+\includegraphics[width=0.7\textwidth]{question_f_plot_A.png}
+\includegraphics[width=0.7\textwidth]{question_f_plot_B.png}
+\caption{Response curves}
+\label{fig:fig3}
+\end{figure*}
+
+\clearpage
 \newgeometry{margin=0.1in}
 \begin{lstlisting}
+# WLTLAU003_Analytics_A1.R
+# Author: Laurence Walton
+
 #
 # (a)
 #
@@ -614,5 +616,6 @@ numeric_to_char <- function(x) {
 labels = apply(Y, 1, which.max)
 char_labels = sapply(labels, numeric_to_char)
 text(X[, "Weight"]~ X[, "Wing"], labels=char_labels, cex=0.8)
+
 \end{lstlisting}
 \end{document}
