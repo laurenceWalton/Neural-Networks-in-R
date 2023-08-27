@@ -10,9 +10,9 @@
 #   X: A N (no. training examples) x p (no. features) matrix
 #
 # Returns:
-#   Matrix of same dimensions as X with log softmax applied 
-#   and the a matrix with log softmax applied - done like this
-#   to avoid numerical issues encountered when just taking log
+#   1. Matrix of same dimensions as X with softmax applied, 
+#   2. Matrix of same dimensions as X with log softmax applied 
+#   Done to avoid numerical issues encountered when just taking log
 #   of softmax output
 softmax_and_log_softmax <- function(X) {
   # Subtracting the max for numerical stability
@@ -162,7 +162,8 @@ validation_error_function <- function(i) {
 num_cores <- detectCores() - 1
 
 # Perform the parallel computation
-val_error <- unlist(mclapply(1:seq, validation_error_function, mc.cores = num_cores))
+val_error <- unlist(mclapply(1:seq, validation_error_function, 
+                             mc.cores = num_cores))
 
 plot(val_error ~ lams, main = "Error vs nu (L1-regularisation)", 
      type = 'b', pch=16, lty=2, col = 6, lwd = 1, xlab = "nu (ν)", 
@@ -281,7 +282,8 @@ validation_error_function_ReLU <- function(i) {
 num_cores <- detectCores() - 1
 
 # Perform the parallel computation
-val_error_ReLU <- unlist(mclapply(1:seq, validation_error_function_ReLU, mc.cores = num_cores))
+val_error_ReLU <- unlist(mclapply(1:seq, 
+  validation_error_function_ReLU, mc.cores = num_cores))
 
 # First plot the tanh (pink) line again 
 # NOTE: must run loop in prev.question first to obtain val_error 
@@ -324,13 +326,20 @@ obj_full_dataset <- function(pars) {
   return(res$L1)
 }
 
+
+# Return the error with L1 penalty applied when fitting
+obj_full_dataset_ReLU <- function(pars) {
+  res <- neural_net_ReLU(X, Y, pars, nu)
+  return(res$L1)
+}
+
 # Network parameters
 p = 2
 q = 3
 m = 8
 npars = p*m+m*q+m+q
 
-nu = 0.09261443
+nu = 0.1
 theta   = runif(npars,-1,1)
 res_opt = nlm(obj_full_dataset, theta, iterlim=1000)
 optimal_pars <- res_opt$estimate
@@ -362,7 +371,7 @@ p = 2
 q = 3
 m = 8
 npars = p*m+m*q+m+q
-nu    = 0.09261443
+nu    = 0.1
 set.seed(2023)
 theta   = runif(npars,-1,1)
 res_opt = nlm(obj_full_dataset, theta, iterlim=1000)
@@ -435,7 +444,7 @@ p = 2
 q = 3
 m = 8
 npars = p*m+m*q+m+q
-nu = 0.09261443
+nu    = 0.1
 set.seed(2023)
 theta   = runif(npars,-1,1)
 res_opt = nlm(obj_full_dataset_ReLU, theta, iterlim=1000)
